@@ -1,0 +1,13 @@
+.streamcomplete-result {
+    box-sizing: border-box;
+    padding: 10px;
+    cursor: pointer;
+    background: #FFF;
+}
+.streamcomplete-result-hover, .streamcomplete-result:hover {
+    background: #EEE;
+}
+.streamcomplete-body {
+    position: absolute;
+    box-shadow: 0px 0px 1px #DDD;
+}
