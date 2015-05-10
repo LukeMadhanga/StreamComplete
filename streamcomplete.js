@@ -26,6 +26,7 @@
                     oninit: ef,
                     onresponse: ef,
                     onsearch: ef,
+                    onselect: ef,
                     src: []
                 }, opts),
                 searchterm: null
@@ -97,6 +98,10 @@
                     if (target.closest('.streamcomplete-body').length) {
                         // The user has clicked on one of the selections
                         var selection = target.data('sc-desc');
+                        if (data.s.onselect.call(T, selection) === false) {
+                            // The caller has prevented continuation
+                            return false;
+                        }
                         T[0].value = selection.value;
                         T.attr({'data-value': selection.id});
                     }
