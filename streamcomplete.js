@@ -21,14 +21,10 @@
                     onajaxerror: ef,
                     onbeforeajaxsearch: ef,
                     onbeforesearch: ef,
-                    onchange: ef,
                     onclose: ef,
                     onerror: ef,
-                    onfocusin: ef,
-                    onfocusout: ef,
                     oninit: ef,
                     onresponse: ef,
-                    onresulthover: ef,
                     onsearch: ef,
                     src: []
                 }, opts),
@@ -41,8 +37,11 @@
                 ENTER: 13,
                 SPACE: 32,
                 TAB: 9,
-                UP: 38
-            };
+                UP: 38,
+                ESC: 27
+            },
+            selectpos = -1,
+            cancelkeypress = false;
             
             /**
              * Render a single result
@@ -61,8 +60,9 @@
              */
             data.render = function (results) {
                 var output = $('.streamcomplete-body').show(),
+                offset = T.offset(),
                 rect = T[0].getBoundingClientRect();
-                output.css({width: T.width(), top: rect.bottom, left: rect.left}).empty();
+                output.css({width: T.width(), top: offset.top + rect.height, left: offset.left}).empty();
                 for (var i = 0; results ? i < results.length : 0; i++) {
                     var desc = results[i];
                     if (Object.prototype.toString.call(desc) !== '[object Object]') {
@@ -104,17 +104,31 @@
                 data.s.onclose.call(T, {selection: selection, results: $('.streamcomplete-body').hide().data('sc-results')});
             };
             
-            T.keyup(function (e) {
+            T.keydown(function (e) {
+                // If there is need to return false, then the keyboard event listener has to be onkeydown.
                 if (inObj(keycodes, e.which)) {
                     // The user is navigating using the keyboard
-                    e.preventDefault();
-                    keyboardAction(e.which);
+                    var ans = keyboardAction(e.which);
+                    if (ans === false) {
+                        // The keyboard action returned false, so prevent the default action
+                        e.preventDefault();
+                        cancelkeypress = true;
+                        return false;
+                    }
+                }
+            });
+            
+            T.keyup(function () {
+                if (cancelkeypress) {
+                    // The keydown event listener says that the keyup event should not be registered
+                    cancelkeypress = false;
                     return false;
                 }
                 data.searchterm = this.value;
                 var payload = {
                     term: data.searchterm
                 };
+                selectpos = -1;
                 if (data.s.onbeforesearch.call(T, payload) === false) {
                     // The caller cancelled the search: return
                     return false;
@@ -132,16 +146,21 @@
                             clear = false;
                             return;
                         }
+                        var isarr = false;
                         switch (Object.prototype.toString.call(data.s.src)) {
                             case '[object String]':
+                                // Assume that the given string is a URL to resolve
                                 getDataAjax(data.s.src, payload);
                                 break;
                             case '[object Array]':
-                                data.render(data.s.src);
-                                data.afterRender();
-                                break;
+                                // Note that the current item is an array and then do the same as would be done for a function
+                                isarr = true;
                             case '[object Function]':
-                                data.render(data.s.src());
+                                var results = isarr ? data.s.src : data.s.src();
+                                if (data.s.onsearch.call(T, results) === false) {
+                                    return false;
+                                }
+                                data.render(results);
                                 data.afterRender();
                                 break;
                         }
@@ -175,8 +194,13 @@
                             clear = false;
                             return;
                         }
-                        data.s.onresponse.call(T, e);
+                        if (data.s.onresponse.call(T, e) === false) {
+                            return false;
+                        };
                         searchinterval = false;
+                        if (data.s.onsearch.call(T, e.data) === false) {
+                            return false;
+                        }
                         data.render(e.data);
                         data.afterRender();
                     } else {
@@ -202,13 +226,43 @@
                 return false;
             };
             
+            /**
+             * Process keyboard navigation
+             * @param {int} which The id of the key that was pressed
+             * @returns {Boolean} <b>False</b> if the navigation require 
+             */
             var keyboardAction = function (which) {
+                var resultlist = $('.streamcomplete-result'),
+                len = resultlist.length;
                 switch (which) {
                     case keycodes.UP:
+                        selectpos = (selectpos - 1 < 0 ? len : selectpos) - 1;
+                        $('.streamcomplete-result-hover').removeClass('streamcomplete-result-hover');
+                        $(resultlist[selectpos]).addClass('streamcomplete-result-hover');
+                        return false;
                     case keycodes.DOWN:
+                        selectpos = selectpos + 1 === len ? 0 : selectpos + 1;
+                        $('.streamcomplete-result-hover').removeClass('streamcomplete-result-hover');
+                        $(resultlist[selectpos]).addClass('streamcomplete-result-hover');
+                        return false;
                     case keycodes.SPACE:
                     case keycodes.ENTER:
                     case keycodes.TAB:
+                        var res = $('.streamcomplete-result-hover');
+                        if (res.length) {
+                            $('.streamcomplete-result-hover').removeClass('streamcomplete-result-hover');
+                            data.close({target: res[0]});
+                            return false;
+                        }
+                        return true;
+                    case keycodes.ESC:
+                        var res = $('.streamcomplete-result-hover');
+                        if (res.length) {
+                            selectpos = -1;
+                            $('.streamcomplete-result-hover').removeClass('streamcomplete-result-hover');
+                            return false;
+                        }
+                        return true;
                 }
             };
             
