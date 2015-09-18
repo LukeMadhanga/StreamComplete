@@ -284,7 +284,7 @@
          * Set the value for this autocomplete
          * @param {object} data An object with at least two properties, value (the human readable value for the input) and id 
          *  (the system value). Any more properties will be added into data attributes of the given key
-         * @returns {jQUery}
+         * @returns {jQuery}
          */
         setValue: function (data) {
             // Test to see whether the plugin has been initialised here first
@@ -299,6 +299,24 @@
                 if (x !== 'id' && x !== 'value') {
                     this.data(x, data[x]);
                 }
+            }
+            return this.change();
+        },
+        /**
+         * Clear the value for this autocomplete
+         * @param {array} properties An array of properties to remove
+         * @returns {jQuery}
+         */
+        clearValue: function (properties) {
+            // Test to see whether the plugin has been initialised here first
+            var scdata = this.data('streamcomplete');
+            if (!scdata) {
+                throw ex('InstanceError', "A call to 'setValue' on an uninitialised object");
+            }
+            this[0].value = '';
+            this.data('value', '');
+            for (i = 0; i < (properties || []).length; i++) {
+                this.data(properties[i], '');
             }
             return this.change();
         }
