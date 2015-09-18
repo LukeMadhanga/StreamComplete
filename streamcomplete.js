@@ -282,7 +282,8 @@
         },
         /**
          * Set the value for this autocomplete
-         * @param {object} data An object with two properties, value (the human readable value for the input) and id (the system value)
+         * @param {object} data An object with at least two properties, value (the human readable value for the input) and id 
+         *  (the system value). Any more properties will be added into data attributes of the given key
          * @returns {jQUery}
          */
         setValue: function (data) {
@@ -293,6 +294,12 @@
             }
             this[0].value = data.value;
             this.data('value', data.id);
+            // Delete the known properties in this object and then add in data attributes for all of the other ones
+            delete data.value;
+            delete data.id;
+            for (var x in data) {
+                this.data(x, data[x]);
+            }
             return this;
         }
     };
