@@ -279,7 +279,40 @@
             draw();
             data.s.oninit.call(T);
             return T;
+        },
+        /**
+         * Set the value for this autocomplete
+         * @param {object} data An object with two properties, value (the human readable value for the input) and id (the system value)
+         * @returns {jQUery}
+         */
+        setValue: function (data) {
+            // Test to see whether the plugin has been initialised here first
+            var scdata = this.data('streamcomplete');
+            if (!scdata) {
+                throw ex('InstanceError', "A call to 'setValue' on an uninitialised object");
+            }
+            this[0].value = data.value;
+            this.data('value', data.id);
+            return this;
         }
+    };
+    
+    /**
+     * StreamConfirm exception handler
+     * @param {string} exceptiontype The name of the exception to replace xxx in the string "Uncaught StreamComplete::xxx - message"
+     * @param {string} message The exception message
+     * @returns {StreamComplete::Exception}
+     */
+    function ex(exceptiontype, message) {
+        return {
+            name: 'StreamComplete::' + exceptiontype,
+            level: "Cannot continue",
+            message: message,
+            htmlMessage: message,
+            toString: function() {
+                return ['StreamComplete::', exceptiontype, ' - ', message].join('');
+            }
+        };
     };
     
     /**
