@@ -294,13 +294,13 @@
             }
             this[0].value = data.value;
             this.data('value', data.id);
-            // Delete the known properties in this object and then add in data attributes for all of the other ones
-            delete data.value;
-            delete data.id;
+            // Add in data attributes for all of the other ones
             for (var x in data) {
-                this.data(x, data[x]);
+                if (x !== 'id' && x !== 'value') {
+                    this.data(x, data[x]);
+                }
             }
-            return this;
+            return this.change();
         }
     };
     
