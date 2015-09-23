@@ -21,8 +21,11 @@
                     onajaxerror: ef,
                     onbeforeajaxsearch: ef,
                     onbeforesearch: ef,
+                    onchange: ef,
                     onclose: ef,
                     onerror: ef,
+                    onfocusin: ef,
+                    onfocusout: ef,
                     oninit: ef,
                     onresponse: ef,
                     onsearch: ef,
@@ -87,8 +90,8 @@
             };
             
             /**
-             * 
-             * @param {type} e
+             * Event after a user has made a selection
+             * @param {Event} e 
              */
             data.close = function (e) {
                 var selection = null;
@@ -103,8 +106,9 @@
                             return false;
                         }
                         T[0].value = selection.value;
-                        T.attr({'data-value': selection.id});
+                        T.data('value', selection.id);
                     }
+                    $('body').unbind('click.streamcomplete');
                 }
                 data.s.onclose.call(T, {selection: selection, results: $('.streamcomplete-body').hide().data('sc-results')});
             };
@@ -271,10 +275,17 @@
                 }
             };
             
-            // Catch all focusin events
-            T.focusin(data.s.onfocusin);
-            T.change(data.s.onchange);
-            T.focusout(data.onfocusout);
+            // Call user events longhand: this will allow a user to update opts successfully
+            var funcs = ['focusin', 'focusout'];
+            for (i = 0; i < funcs.length; i++) {
+                var funcname = funcs[i]; // E.g. focusin, change
+                T[funcname](function (e) {
+                    var scdata = $(this).data('streamcomplete');
+                    if (Object.prototype.toString.call(scdata.s['on' + e.type]) === '[object Function]') {
+                        scdata.s['on' + e.type].call(this, e);
+                    }
+                });
+            }
             T.data('streamcomplete', data);
             draw();
             data.s.oninit.call(T);
@@ -319,6 +330,20 @@
                 this.data(properties[i], '');
             }
             return this.change();
+        },
+        /**
+         * Update options for this autocomplete
+         * @param {object} opts An object with properties that could have been supplied at plugin initialisation
+         * @returns {jQuery} 
+         */
+        updateOpts: function (opts) {
+            var scdata = this.data('streamcomplete');
+            if (!scdata) {
+                throw ex('InstanceError', "A call to 'setValue' on an uninitialised object");
+            }
+            scdata.s = $.extend(scdata.s, opts);
+            this.data('streamcomplete', scdata);
+            return this;
         }
     };
     
