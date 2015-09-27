@@ -1,19 +1,10 @@
-(function ($, count, window) {
-    
-    var ef = function () {},
+(function ($, count, window, document) {
+    "use strict";
+    var ef = function () {return true;},
     methods = {
         init: function (opts) {
-            var T = this;
-            if (!T.length || T.data('streamcomplete')) {
-                // There are no elements or this object has already been initialised
-                return T;
-            } else if (T.length > 1) {
-                T.each(function () {
-                    $(this).streamComplete(opts);
-                });
-                return T;
-            }
-            var data = {
+            var T = this,
+            data = {
                 instanceid: ++count,
                 s: $.fn.extend({
                     delay: 250,
@@ -46,6 +37,16 @@
             },
             selectpos = -1,
             cancelkeypress = false;
+            if (!T.length || T.data('streamcomplete')) {
+                // There are no elements or this object has already been initialised
+                return T;
+            } 
+            if (T.length > 1) {
+                T.each(function () {
+                    $(this).streamComplete(opts);
+                });
+                return T;
+            }
             
             /**
              * Render a single result
@@ -277,7 +278,7 @@
             
             // Call user events longhand: this will allow a user to update opts successfully
             var funcs = ['focusin', 'focusout'];
-            for (i = 0; i < funcs.length; i++) {
+            for (var i = 0; i < funcs.length; i++) {
                 var funcname = funcs[i]; // E.g. focusin, change
                 T[funcname](function (e) {
                     var scdata = $(this).data('streamcomplete');
@@ -391,4 +392,4 @@
         }
     };
     
-})(jQuery, 0, this);
+})(jQuery, 0, this, this.document);
