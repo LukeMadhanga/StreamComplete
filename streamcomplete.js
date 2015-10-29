@@ -55,7 +55,7 @@
              */
             data.renderResult = function (desc) {
                 var elem = document.createElement('div');
-                $(elem).html(desc.value).data('sc-desc', desc).addClass('streamcomplete-result');
+                $(elem).html(desc.label).data('sc-desc', desc).addClass('streamcomplete-result');
                 return elem;
             };
             
@@ -67,12 +67,18 @@
                 var output = $('.streamcomplete-body').show(),
                 offset = T.offset(),
                 rect = T[0].getBoundingClientRect();
-                output.css({width: T.width(), top: offset.top + rect.height, left: offset.left}).empty();
+                output.css({width: rect.width, top: offset.top + rect.height, left: offset.left}).empty();
                 for (var i = 0; results ? i < results.length : 0; i++) {
                     var desc = results[i];
                     if (Object.prototype.toString.call(desc) !== '[object Object]') {
                         // The result is not an object, make it one
                         desc = {id: i, value: desc};
+                    }
+                    if (!desc.label && desc.value) {
+                        desc.label = desc.value;
+                    }
+                    if (!desc.value && desc.label) {
+                        desc.value = desc.label;
                     }
                     var res = data.renderResult(desc);
                     output.append(res);
@@ -300,19 +306,26 @@
          */
         setValue: function (data) {
             // Test to see whether the plugin has been initialised here first
-            var scdata = this.data('streamcomplete');
+            var T = this;
+            if (T.length > 1) {
+                T.each(function () {
+                    $(this).streamComplete('clearValue');
+                });
+                return T;
+            }
+            var scdata = T.data('streamcomplete');
             if (!scdata) {
                 throw ex('InstanceError', "A call to 'setValue' on an uninitialised object");
             }
-            this[0].value = data.value;
-            this.data('value', data.id);
+            T[0].value = data.value;
+            T.data('value', data.id);
             // Add in data attributes for all of the other ones
             for (var x in data) {
                 if (x !== 'id' && x !== 'value') {
-                    this.data(x, data[x]);
+                    T.data(x, data[x]);
                 }
             }
-            return this.change();
+            return T.change();
         },
         /**
          * Clear the value for this autocomplete
@@ -320,13 +333,20 @@
          * @returns {jQuery}
          */
         clearValue: function (properties) {
+            var T = this;
+            if (T.length > 1) {
+                T.each(function () {
+                    $(this).streamComplete('clearValue');
+                });
+                return T;
+            }
             // Test to see whether the plugin has been initialised here first
-            var scdata = this.data('streamcomplete');
+            var scdata = T.data('streamcomplete');
             if (!scdata) {
                 throw ex('InstanceError', "A call to 'setValue' on an uninitialised object");
             }
-            this[0].value = '';
-            this.data('value', '');
+            T[0].value = '';
+            T.data('value', '');
             for (i = 0; i < (properties || []).length; i++) {
                 this.data(properties[i], '');
             }
@@ -338,12 +358,19 @@
          * @returns {jQuery} 
          */
         updateOpts: function (opts) {
+            var T = this;
+            if (T.length > 1) {
+                T.each(function () {
+                    $(this).streamComplete('updateOpts', opts);
+                });
+                return T;
+            }
             var scdata = this.data('streamcomplete');
             if (!scdata) {
                 throw ex('InstanceError', "A call to 'setValue' on an uninitialised object");
             }
             scdata.s = $.extend(scdata.s, opts);
-            this.data('streamcomplete', scdata);
+            T.data('streamcomplete', scdata);
             return this;
         }
     };
