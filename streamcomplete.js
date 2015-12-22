@@ -1,6 +1,7 @@
 (function ($, count, window, document) {
     "use strict";
-    var ef = function () {return true;},
+    var ajax = null,
+    ef = function () {return;},
     methods = {
         init: function (opts) {
             var T = this,
@@ -70,9 +71,11 @@
                 output.css({width: rect.width, top: offset.top + rect.height, left: offset.left}).empty();
                 for (var i = 0; results ? i < results.length : 0; i++) {
                     var desc = results[i];
-                    if (Object.prototype.toString.call(desc) !== '[object Object]') {
-                        // The result is not an object, make it one
-                        desc = {id: i, value: desc};
+                    switch (Object.prototype.toString.call(desc)) {
+                        case '[object String]':
+                            // Make the string into an object
+                            desc = {id: i, value: desc};
+                            break;
                     }
                     if (!desc.label && desc.value) {
                         desc.label = desc.value;
@@ -134,6 +137,18 @@
                 }
             });
             
+            /**
+             * A callback if the source parameter is a function
+             * @param {array} results An array of results 
+             */
+            data.returnSource = function (results) {
+                if (data.s.onsearch.call(T, results) === false) {
+                    return false;
+                }
+                data.render(results);
+                data.afterRender();
+            };
+            
             T.keyup(function () {
                 if (cancelkeypress) {
                     // The keydown event listener says that the keyup event should not be registered
@@ -162,17 +177,17 @@
                             clear = false;
                             return;
                         }
-                        var isarr = false;
                         switch (Object.prototype.toString.call(data.s.src)) {
                             case '[object String]':
                                 // Assume that the given string is a URL to resolve
                                 getDataAjax(data.s.src, payload);
                                 break;
-                            case '[object Array]':
-                                // Note that the current item is an array and then do the same as would be done for a function
-                                isarr = true;
                             case '[object Function]':
-                                var results = isarr ? data.s.src : data.s.src();
+                                // Call the source function
+                                data.s.src(data.searchterm, data.returnSource);
+                                break;
+                            case '[object Array]':
+                                var results = data.s.src;
                                 if (data.s.onsearch.call(T, results) === false) {
                                     return false;
                                 }
@@ -195,7 +210,11 @@
              * @param {object(plain)} payload The payload to pass to as post data
              */
             var getDataAjax = function (url, payload) {
-                $.ajax({
+                if (ajax) {
+                    // There is a running ajax request
+                    ajax.abort();
+                }
+                ajax = $.ajax({
                     url: url,
                     type: 'post',
                     dataType: 'json',
@@ -203,6 +222,8 @@
                         data.s.onbeforeajaxsearch.call(T, e);
                     },
                     data: {payload: JSON.stringify(payload)}
+                }).always(function () {
+                    ajax = null;
                 }).done(function (e) {
                     if (e.result === 'OK') {
                         if (clear) {
