@@ -70,19 +70,8 @@
                 rect = T[0].getBoundingClientRect();
                 output.css({width: rect.width, top: offset.top + rect.height, left: offset.left}).empty();
                 for (var i = 0; results ? i < results.length : 0; i++) {
-                    var desc = results[i];
-                    switch (Object.prototype.toString.call(desc)) {
-                        case '[object String]':
-                            // Make the string into an object
-                            desc = {id: i, value: desc};
-                            break;
-                    }
-                    if (!desc.label && desc.value) {
-                        desc.label = desc.value;
-                    }
-                    if (!desc.value && desc.label) {
-                        desc.value = desc.label;
-                    }
+                    var desc = getAsObject(results[i]);
+                    
                     var res = data.renderResult(desc);
                     output.append(res);
                 }
@@ -187,7 +176,15 @@
                                 data.s.src(data.searchterm, data.returnSource);
                                 break;
                             case '[object Array]':
-                                var results = data.s.src;
+                                var datasrc = data.arraysrc,
+                                re = new RegExp(data.searchterm.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"), 'i'), 
+                                results = [], i, line;
+                                for (i = 0; i < datasrc.length; i++) {
+                                    line = getAsObject(datasrc[i]);
+                                    if (line.value.match(re)) {
+                                        results[results.length] = line;
+                                    }
+                                }
                                 if (data.s.onsearch.call(T, results) === false) {
                                     return false;
                                 }
@@ -203,6 +200,27 @@
                 }
                 T.data('streamcomplete', data);
             });
+            
+            /**
+             * Conform a line in an array so that it is an object with at least the propeties id, value and label
+             * @param {mixed} line The line
+             * @returns {object} An object with at least the properties id, value and label
+             */
+            function getAsObject(line) {
+                switch (Object.prototype.toString.call(line)) {
+                    case '[object String]':
+                        // Make the string into an object
+                        line = {id: i, value: line};
+                        break;
+                }
+                if (!line.label && line.value) {
+                    line.label = line.value;
+                }
+                if (!line.value && line.label) {
+                    line.value = line.label;
+                }
+                return line;
+            }
             
             /**
              * Get data for the autocomplete via AJAX
