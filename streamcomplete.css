@@ -3,6 +3,8 @@
     padding: 10px;
     cursor: pointer;
     background: #FFF;
+    word-break: break-all;
+    font-weight: lighter;
 }
 .streamcomplete-result-hover, .streamcomplete-result:hover {
     background: #EEE;
