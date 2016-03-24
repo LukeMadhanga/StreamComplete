@@ -13,11 +13,8 @@
                     onajaxerror: ef,
                     onbeforeajaxsearch: ef,
                     onbeforesearch: ef,
-                    onchange: ef,
                     onclose: ef,
                     onerror: ef,
-                    onfocusin: ef,
-                    onfocusout: ef,
                     oninit: ef,
                     onresponse: ef,
                     onsearch: ef,
@@ -176,7 +173,7 @@
                                 data.s.src(data.searchterm, data.returnSource);
                                 break;
                             case '[object Array]':
-                                var datasrc = data.arraysrc,
+                                var datasrc = data.s.src,
                                 re = new RegExp(data.searchterm.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"), 'i'), 
                                 results = [], i, line;
                                 for (i = 0; i < datasrc.length; i++) {
@@ -380,7 +377,8 @@
                 return T;
             }
             // Test to see whether the plugin has been initialised here first
-            var scdata = T.data('streamcomplete');
+            var scdata = T.data('streamcomplete'),
+            i;
             if (!scdata) {
                 throw ex('InstanceError', "A call to 'setValue' on an uninitialised object");
             }
