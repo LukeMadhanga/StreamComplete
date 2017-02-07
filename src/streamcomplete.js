@@ -65,6 +65,7 @@
                 var output = $('.streamcomplete-body').show(),
                 offset = T.offset(),
                 rect = T[0].getBoundingClientRect();
+                $('.streamcomplete-body').data({'sc-results': results});
                 output.css({width: rect.width, top: offset.top + rect.height, left: offset.left}).empty();
                 for (var i = 0; results ? i < results.length : 0; i++) {
                     var desc = getAsObject(results[i]);
@@ -94,6 +95,7 @@
                 if (e) {
                     // This function was called as a result of an event
                     var target = $(e.target);
+                    var sc = target.data('streamcomplete')
                     if (target.closest('.streamcomplete-body').length) {
                         // The user has clicked on one of the selections
                         var selection = target.data('sc-desc');
@@ -103,10 +105,13 @@
                         }
                         T[0].value = selection.value;
                         T.data('value', selection.id);
+                    } else if (sc && sc.instanceid === data.instanceid) {
+                        e.preventDefault();
+                        return false;
                     }
                     $('body').unbind('click.streamcomplete');
                 }
-                data.s.onclose.call(T, {selection: selection, results: $('.streamcomplete-body').hide().data('sc-results')});
+                data.s.onclose.call(T, {selection: selection, results: $('.streamcomplete-body').hide().data('sc-results') || []});
             };
             
             T.keydown(function (e) {
@@ -134,6 +139,14 @@
                 data.render(results);
                 data.afterRender();
             };
+            
+            T.focus(function () {
+                var curdata = $('.streamcomplete-body').data('sc-results');
+                if (curdata && curdata.length) {
+                    data.render(curdata);
+                    data.afterRender();
+                }
+            });
             
             T.keyup(function () {
                 if (cancelkeypress) {
@@ -163,6 +176,7 @@
                             clear = false;
                             return;
                         }
+                        $('.streamcomplete-body').data({'sc-results': []});
                         switch (Object.prototype.toString.call(data.s.src)) {
                             case '[object String]':
                                 // Assume that the given string is a URL to resolve
