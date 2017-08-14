@@ -7,6 +7,7 @@
             var T = this,
             data = {
                 instanceid: ++count,
+                results: [],
                 s: $.fn.extend({
                     delay: 250,
                     minlength: 2,
@@ -26,6 +27,8 @@
             searchinterval = false,
             clear = false,
             keycodes = {
+                LEFT: 37,
+                RIGHT: 39,
                 DOWN: 40,
                 ENTER: 13,
                 SPACE: 32,
@@ -66,6 +69,7 @@
                 offset = T.offset(),
                 rect = T[0].getBoundingClientRect();
                 $('.streamcomplete-body').data({'sc-results': results});
+                data.results = results;
                 output.css({width: rect.width, top: offset.top + rect.height, left: offset.left}).empty();
                 for (var i = 0; results ? i < results.length : 0; i++) {
                     var desc = getAsObject(results[i]);
@@ -95,16 +99,17 @@
                 if (e) {
                     // This function was called as a result of an event
                     var target = $(e.target);
-                    var sc = target.data('streamcomplete')
+                    var sc = target.data('streamcomplete');
                     if (target.closest('.streamcomplete-body').length) {
                         // The user has clicked on one of the selections
-                        var selection = target.data('sc-desc');
+                        selection = target.data('sc-desc');
                         if (data.s.onselect.call(T, selection) === false) {
                             // The caller has prevented continuation
                             return false;
                         }
                         T[0].value = selection.value;
                         T.data('value', selection.id);
+                        T.data('streamcomplete-item', selection);
                     } else if (sc && sc.instanceid === data.instanceid) {
                         e.preventDefault();
                         return false;
@@ -148,11 +153,18 @@
                 }
             });
             
-            T.keyup(function () {
+            T.keyup(function (e) {
                 if (cancelkeypress) {
                     // The keydown event listener says that the keyup event should not be registered
                     cancelkeypress = false;
                     return false;
+                }
+                if ((data.results || []).length && (e.which === keycodes.LEFT || e.which === keycodes.RIGHT || e.which === keycodes.ENTER)) {
+                    // Don't perform a search just because the user is navigating (unless there's no data)
+                    if (e.which === keycodes.ENTER) {
+                        T.focus();
+                    }
+                    return;
                 }
                 data.searchterm = this.value;
                 var payload = {
@@ -177,6 +189,7 @@
                             return;
                         }
                         $('.streamcomplete-body').data({'sc-results': []});
+                        data.results = [];
                         switch (Object.prototype.toString.call(data.s.src)) {
                             case '[object String]':
                                 // Assume that the given string is a URL to resolve
