@@ -146,7 +146,7 @@
             };
             
             T.focus(function () {
-                var curdata = $('.streamcomplete-body').data('sc-results');
+                var curdata = (T.data('streamcomplete') || {}).results;
                 if (curdata && curdata.length) {
                     data.render(curdata);
                     data.afterRender();
