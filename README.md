@@ -13,8 +13,11 @@ This plugin is an alternative to the jQuery UI version, useful if you don't need
 ##Initialising##
 
 ####HTML####
-    <script type="text/javascript" src="/path/to/streamcomplete.js"></script>
-    <link rel="stylesheet" type="text/css" href="/path/to/streamcomplete.css">
+
+```html
+<script type="text/javascript" src="/path/to/streamcomplete.js"></script>
+<link rel="stylesheet" type="text/css" href="/path/to/streamcomplete.css">
+```
 
 ```js
 $(function () {
