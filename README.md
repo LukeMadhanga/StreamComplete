@@ -10,9 +10,9 @@ This plugin is an alternative to the jQuery UI version, useful if you don't need
 
 ----------
 
-##Initialising##
+## Initialising ##
 
-####HTML####
+#### HTML ####
 
 ```html
 <script type="text/javascript" src="/path/to/streamcomplete.js"></script>
