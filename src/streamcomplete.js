@@ -11,18 +11,33 @@
                 s: $.fn.extend({
                     delay: 250,
                     minlength: 2,
+                    // class names added to the .streamcomplete-body
+                    classnames: [],
+                    clearonemptysearch: false,  // False for legacy purposes
+                    appendto: 'body',
                     onajaxerror: ef,
                     onbeforeajaxsearch: ef,
                     onbeforesearch: ef,
                     onclose: ef,
                     onerror: ef,
+                    onemptysearchclear: ef,
+                    onfocusout: ef,
+                    onfocusin: ef,
                     oninit: ef,
+                    onopen: ef,
                     onresponse: ef,
                     onsearch: ef,
                     onselect: ef,
-                    src: []
+                    preprocessresults: null,
+                    requestmethod: 'post',
+                    src: [],
+                    usestandardsyntax: false    // True to use standard syntax. Defaults to false for legacy purposes
                 }, opts),
-                searchterm: null
+                searchterm: null,
+                keyboard: {
+                    selectpos: -1
+                },
+                outputelement: null
             },
             searchinterval = false,
             clear = false,
@@ -34,21 +49,23 @@
                 SPACE: 32,
                 TAB: 9,
                 UP: 38,
-                ESC: 27
+                ESC: 27,
+                SHIFT: 16
             },
-            selectpos = -1,
             cancelkeypress = false;
+
             if (!T.length || T.data('streamcomplete')) {
                 // There are no elements or this object has already been initialised
                 return T;
-            } 
+            }
+
             if (T.length > 1) {
                 T.each(function () {
                     $(this).streamComplete(opts);
                 });
                 return T;
             }
-            
+
             /**
              * Render a single result
              * @param {object(plain)} desc An object with necessary properties. The obejct MUST have the properties 'id' and 'value'
@@ -59,48 +76,66 @@
                 $(elem).html(desc.label).data('sc-desc', desc).addClass('streamcomplete-result');
                 return elem;
             };
-            
+
             /**
              * Render the full autocomplete
              * @param {array} results An array of objects in the form [{id: int, value: value}, ...], or an array of values
              */
             data.render = function (results) {
-                var output = $('.streamcomplete-body').show(),
+                var output,
                 offset = T.offset(),
-                rect = T[0].getBoundingClientRect();
-                $('.streamcomplete-body').data({'sc-results': results});
+                rect = $.extend({}, T[0].getBoundingClientRect()),
+                outputbounds = { width: rect.width, top: offset.top + rect.height, left: offset.left };
+
+                $('.streamcomplete-body').hide(); // Hide all open
+
+                output = data.outputelement;
+                output.show().data({'sc-results': results});
+
                 data.results = results;
-                output.css({width: rect.width, top: offset.top + rect.height, left: offset.left}).empty();
+                data.s.onopen.call(T, results, outputbounds);
+
+                if (data.s.appendto === 'body') {
+                    output.css(outputbounds);
+                }
+
+                output.empty();
                 for (var i = 0; results ? i < results.length : 0; i++) {
                     var desc = getAsObject(results[i]);
-                    
+
                     var res = data.renderResult(desc);
                     output.append(res);
                 }
             };
-            
+
             /**
-             * The after render function. Seperate from the render function because the render function can be customised, whereas 
+             * The after render function. Seperate from the render function because the render function can be customised, whereas
              *  everything in this function is more or less always required. Makes customising the output easier
              */
             data.afterRender = function () {
-                var output = $('.streamcomplete-body'),
-                results = output.data('sc-results');
+                var output = data.outputelement,
+                results = output.data('sc-results'),
+                funcname = 'click.streamcomplete-' + data.instanceid;
                 output.data('sc-results', results);
-                $('body').unbind('click.streamcomplete').bind('click.streamcomplete', data.close);
+                $('body').off(funcname).on(funcname, data.close);
             };
-            
+
             /**
              * Event after a user has made a selection
-             * @param {Event} e 
+             * @param {Event} e
              */
             data.close = function (e) {
                 var selection = null;
+                var fromevent = false;
+
                 if (e) {
                     // This function was called as a result of an event
                     var target = $(e.target);
                     var sc = target.data('streamcomplete');
-                    if (target.closest('.streamcomplete-body').length) {
+
+                    fromevent = true;
+
+                    if (target.closest(data.outputelement).length) {
                         // The user has clicked on one of the selections
                         selection = target.data('sc-desc');
                         if (data.s.onselect.call(T, selection) === false) {
@@ -114,11 +149,18 @@
                         e.preventDefault();
                         return false;
                     }
-                    $('body').unbind('click.streamcomplete');
+                    $('body').off('click.streamcomplete-' + data.instanceid);
                 }
-                data.s.onclose.call(T, {selection: selection, results: $('.streamcomplete-body').hide().data('sc-results') || []});
+
+                data.s.onclose.call(T, {
+                    selection: selection,
+                    results: data.outputelement.hide().data('sc-results') || [],
+                    fromevent: fromevent,
+                    originalevent: e ? e.originalEvent || false : false,
+                    fromselectevent: e ? $(e.target).hasClass('streamcomplete-result') : false
+                });
             };
-            
+
             T.keydown(function (e) {
                 // If there is need to return false, then the keyboard event listener has to be onkeydown.
                 if (inObj(keycodes, e.which)) {
@@ -127,15 +169,16 @@
                     if (ans === false) {
                         // The keyboard action returned false, so prevent the default action
                         e.preventDefault();
+                        e.stopPropagation();
                         cancelkeypress = true;
                         return false;
                     }
                 }
             });
-            
+
             /**
              * A callback if the source parameter is a function
-             * @param {array} results An array of results 
+             * @param {array} results An array of results
              */
             data.returnSource = function (results) {
                 if (data.s.onsearch.call(T, results) === false) {
@@ -144,7 +187,7 @@
                 data.render(results);
                 data.afterRender();
             };
-            
+
             T.focus(function () {
                 var curdata = (T.data('streamcomplete') || {}).results;
                 if (curdata && curdata.length) {
@@ -152,13 +195,19 @@
                     data.afterRender();
                 }
             });
-            
+
             T.keyup(function (e) {
                 if (cancelkeypress) {
                     // The keydown event listener says that the keyup event should not be registered
                     cancelkeypress = false;
                     return false;
                 }
+
+                if (e.which === keycodes.SHIFT) {
+                    // Don't trigger a search on shift key press. Causes issues when using reverse tab
+                    return false;
+                }
+
                 if ((data.results || []).length && (e.which === keycodes.LEFT || e.which === keycodes.RIGHT || e.which === keycodes.ENTER)) {
                     // Don't perform a search just because the user is navigating (unless there's no data)
                     if (e.which === keycodes.ENTER) {
@@ -170,7 +219,7 @@
                 var payload = {
                     term: data.searchterm
                 };
-                selectpos = -1;
+                data.keyboard.selectpos = -1;
                 if (data.s.onbeforesearch.call(T, payload) === false) {
                     // The caller cancelled the search: return
                     return false;
@@ -188,12 +237,16 @@
                             clear = false;
                             return;
                         }
-                        $('.streamcomplete-body').data({'sc-results': []});
+                        data.outputelement.data({'sc-results': []});
                         data.results = [];
                         switch (Object.prototype.toString.call(data.s.src)) {
                             case '[object String]':
                                 // Assume that the given string is a URL to resolve
-                                getDataAjax(data.s.src, payload);
+                                if (data.s.usestandardsyntax) {
+                                    getDataAjaxStandard(data.s.src, payload);
+                                } else {
+                                    getDataAjax(data.s.src, payload);
+                                }
                                 break;
                             case '[object Function]':
                                 // Call the source function
@@ -201,7 +254,7 @@
                                 break;
                             case '[object Array]':
                                 var datasrc = data.s.src,
-                                re = new RegExp(data.searchterm.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"), 'i'), 
+                                re = new RegExp(data.searchterm.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"), 'i'),
                                 results = [], i, line;
                                 for (i = 0; i < datasrc.length; i++) {
                                     line = getAsObject(datasrc[i]);
@@ -222,9 +275,12 @@
                     clear = true;
                     data.close();
                 }
+                if (!this.value.length && data.s.clearonemptysearch && data.s.onemptysearchclear.call(T) !== false) {
+                    data.results = [];
+                }
                 T.data('streamcomplete', data);
             });
-            
+
             /**
              * Conform a line in an array so that it is an object with at least the propeties id, value and label
              * @param {mixed} line The line
@@ -245,7 +301,34 @@
                 }
                 return line;
             }
-            
+
+            function getClasses() {
+                var classnames = [
+                    'streamcomplete-body',
+                    'streamcomplete-body-iid-' + data.instanceid
+                ];
+                classnames = classnames.concat(data.s.classnames);
+                return classnames;
+            }
+
+            /**
+             *
+             * @returns {undefined}
+             */
+            function draw() {
+                var classnames = getClasses();
+                var el = $('.' + classnames.join('.'));
+
+                if (!el.length) {
+                    // The element is yet to be created
+                    $(data.s.appendto).append($('<div>', {
+                        class: classnames.join(' ')
+                    }));
+
+                    data.outputelement = $('.' + classnames.join('.'));
+                }
+            }
+
             /**
              * Get data for the autocomplete via AJAX
              * @param {string} url The url to get the AJAX results from
@@ -258,7 +341,7 @@
                 }
                 ajax = $.ajax({
                     url: url,
-                    type: 'post',
+                    type: data.s.requestmethod,
                     dataType: 'json',
                     beforeSend: function (e) {
                         data.s.onbeforeajaxsearch.call(T, e);
@@ -272,6 +355,9 @@
                             // A clear was called during the request
                             clear = false;
                             return;
+                        }
+                        if (data.s.preprocessresults) {
+                            e.data = data.s.preprocessresults(e.data);
                         }
                         if (data.s.onresponse.call(T, e) === false) {
                             return false;
@@ -289,7 +375,54 @@
                     data.s.onajaxerror.call(T, e);
                 });
             };
-            
+
+            /**
+             * Get data for the autocomplete via AJAX using standard syntax
+             * @param {string} url The url to get the AJAX results from
+             * @param {object(plain)} payload The payload to pass to as post data
+             */
+            var getDataAjaxStandard = function (url, payload) {
+                if (ajax) {
+                    // There is a running ajax request
+                    ajax.abort();
+                }
+                ajax = $.ajax({
+                    url: url,
+                    type: data.s.requestmethod,
+                    dataType: 'json',
+                    beforeSend: function (e) {
+                        data.s.onbeforeajaxsearch.call(T, e);
+                    },
+                    data: payload
+                }).always(function () {
+                    ajax = null;
+                }).done(function (e) {
+                    if (e && e.data) {
+                        if (clear) {
+                            // A clear was called during the request
+                            clear = false;
+                            return;
+                        }
+                        if (data.s.preprocessresults) {
+                            e.data = data.s.preprocessresults(e.data);
+                        }
+                        if (data.s.onresponse.call(T, e) === false) {
+                            return false;
+                        };
+                        searchinterval = false;
+                        if (data.s.onsearch.call(T, e.data) === false) {
+                            return false;
+                        }
+                        data.render(e.data);
+                        data.afterRender();
+                    } else {
+                        data.s.onerror.call(T, e);
+                    }
+                }).fail(function (e) {
+                    data.s.onajaxerror.call(T, e);
+                });
+            };
+
             /**
              * Perform a strict comparison with object values to determine whether a value exists in an object
              * @param {object} obj The object to look in
@@ -304,47 +437,51 @@
                 }
                 return false;
             };
-            
+
             /**
              * Process keyboard navigation
              * @param {int} which The id of the key that was pressed
-             * @returns {Boolean} <b>False</b> if the navigation require 
+             * @returns {Boolean} <b>False</b> if the navigation require
              */
             var keyboardAction = function (which) {
-                var resultlist = $('.streamcomplete-result'),
+                var body = data.outputelement;
+                var resultlist = $('.streamcomplete-result', body),
                 len = resultlist.length;
+
                 switch (which) {
                     case keycodes.UP:
-                        selectpos = (selectpos - 1 < 0 ? len : selectpos) - 1;
-                        $('.streamcomplete-result-hover').removeClass('streamcomplete-result-hover');
-                        $(resultlist[selectpos]).addClass('streamcomplete-result-hover');
+                        data.keyboard.selectpos = (data.keyboard.selectpos - 1 < 0 ? len : data.keyboard.selectpos) - 1;
+                        $('.streamcomplete-result-hover', body).removeClass('streamcomplete-result-hover');
+                        $(resultlist[data.keyboard.selectpos]).addClass('streamcomplete-result-hover');
                         return false;
                     case keycodes.DOWN:
-                        selectpos = selectpos + 1 === len ? 0 : selectpos + 1;
-                        $('.streamcomplete-result-hover').removeClass('streamcomplete-result-hover');
-                        $(resultlist[selectpos]).addClass('streamcomplete-result-hover');
+                        data.keyboard.selectpos = data.keyboard.selectpos + 1 === len ? 0 : data.keyboard.selectpos + 1;
+                        $('.streamcomplete-result-hover', body).removeClass('streamcomplete-result-hover');
+                        $(resultlist[data.keyboard.selectpos]).addClass('streamcomplete-result-hover');
                         return false;
                     case keycodes.SPACE:
                     case keycodes.ENTER:
                     case keycodes.TAB:
-                        var res = $('.streamcomplete-result-hover');
+                        var res = $('.streamcomplete-result-hover', body);
                         if (res.length) {
-                            $('.streamcomplete-result-hover').removeClass('streamcomplete-result-hover');
+                            $('.streamcomplete-result-hover', body).removeClass('streamcomplete-result-hover');
                             data.close({target: res[0]});
                             return false;
                         }
                         return true;
                     case keycodes.ESC:
-                        var res = $('.streamcomplete-result-hover');
+                        var res = $('.streamcomplete-result-hover', body);
                         if (res.length) {
-                            selectpos = -1;
-                            $('.streamcomplete-result-hover').removeClass('streamcomplete-result-hover');
+                            data.keyboard.selectpos = -1;
+                            $('.streamcomplete-result-hover', body).removeClass('streamcomplete-result-hover');
                             return false;
                         }
                         return true;
+                    case keycodes.SHIFT:
+                        return false;
                 }
             };
-            
+
             // Call user events longhand: this will allow a user to update opts successfully
             var funcs = ['focusin', 'focusout'];
             for (var i = 0; i < funcs.length; i++) {
@@ -363,7 +500,7 @@
         },
         /**
          * Set the value for this autocomplete
-         * @param {object} data An object with at least two properties, value (the human readable value for the input) and id 
+         * @param {object} data An object with at least two properties, value (the human readable value for the input) and id
          *  (the system value). Any more properties will be added into data attributes of the given key
          * @returns {jQuery}
          */
@@ -419,7 +556,7 @@
         /**
          * Update options for this autocomplete
          * @param {object} opts An object with properties that could have been supplied at plugin initialisation
-         * @returns {jQuery} 
+         * @returns {jQuery}
          */
         updateOpts: function (opts) {
             var T = this;
@@ -438,7 +575,7 @@
             return this;
         }
     };
-    
+
     /**
      * StreamConfirm exception handler
      * @param {string} exceptiontype The name of the exception to replace xxx in the string "Uncaught StreamComplete::xxx - message"
@@ -456,19 +593,7 @@
             }
         };
     };
-    
-    /**
-     * 
-     * @returns {undefined}
-     */
-    function draw() {
-        if ($('.streamcomplete-body').length) {
-            // The body has already been drawn
-            return;
-        }
-        $('body').append('<div class="streamcomplete-body"></div>');
-    }
-    
+
     $.fn.streamComplete = function(methodOrOpts) {
         var T = this;
         if (methods[methodOrOpts]) {
@@ -482,5 +607,5 @@
             $.error(['The method ', methodOrOpts, ' does not exist'].join(''));
         }
     };
-    
+
 })(jQuery, 0, this, this.document);
