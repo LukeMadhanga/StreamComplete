@@ -11,15 +11,16 @@ This plugin is an alternative to the jQuery UI version, useful if you don't need
 ----------
 
 ##Initialising##
+
 ####HTML####
     <script type="text/javascript" src="/path/to/streamcomplete.js"></script>
     <link rel="stylesheet" type="text/css" href="/path/to/streamcomplete.css">
 
-####JavaScript####
-    $(function () {
-        $(selector).streamComplete({...});
-    });
-*NB, `$(function () {})` is shorthand for `$(document).ready(function () {})`*
+```js
+$(function () {
+    $(selector).streamComplete({...});
+});
+```
 
 ##Options##
 
