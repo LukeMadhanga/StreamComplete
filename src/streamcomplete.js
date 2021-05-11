@@ -1,4 +1,4 @@
-(function ($, count, window, document) {
+(function ($, count) {
     "use strict";
     var ajax = null,
     ef = function () {return;},
@@ -608,4 +608,4 @@
         }
     };
 
-})(jQuery, 0, this, this.document);
+})(jQuery, 0);
