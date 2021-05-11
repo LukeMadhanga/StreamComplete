@@ -4,6 +4,7 @@
     cursor: pointer;
     background: #FFF;
     word-break: break-all;
+    -webkit-font-smoothing: subpixel-antialiased;
     font-weight: lighter;
 }
 .streamcomplete-result-hover, .streamcomplete-result:hover {
@@ -12,4 +13,5 @@
 .streamcomplete-body {
     position: absolute;
     box-shadow: 0px 0px 15px #D8D8D8;
+    z-index: 2;
 }
