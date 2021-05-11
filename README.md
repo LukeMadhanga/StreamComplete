@@ -25,7 +25,7 @@ $(function () {
 });
 ```
 
-##Options##
+## Options ##
 
 | Option | Default | Type | Description |
 ----------|-------|-------|----------------|
