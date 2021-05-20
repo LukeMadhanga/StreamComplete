@@ -130,14 +130,14 @@
 
                     if (e) {
                         // This function was called as a result of an event
-                        var target = $(e.currentTarget);
-                        var sc = target.data('streamcomplete');
+                        var target = $(e.target);
+                        var sc = target.closest('.streamcomplete-result').data('streamcomplete');
 
                         fromevent = true;
 
                         if (target.closest(data.outputelement).length) {
                             // The user has clicked on one of the selections
-                            selection = target.data('sc-desc');
+                            selection = target.closest('.streamcomplete-result').data('sc-desc');
                             if (data.s.onselect.call(T, selection) === false) {
                                 // The caller has prevented continuation
                                 return false;
@@ -157,7 +157,7 @@
                         results: data.outputelement.hide().data('sc-results') || [],
                         fromevent: fromevent,
                         originalevent: e ? e.originalEvent || false : false,
-                        fromselectevent: e ? $(e.currentTarget).hasClass('streamcomplete-result') : false
+                        fromselectevent: e ? $(e.target).hasClass('streamcomplete-result') : false
                     });
                 };
 
